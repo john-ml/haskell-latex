@@ -1,0 +1,75 @@
+name:                Latex
+version:             0.1.0.0
+github:              "githubuser/Latex"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2019 Author name here"
+
+default-extensions:
+- OverloadedStrings
+- OverloadedLists
+- NamedFieldPuns
+- LambdaCase
+- EmptyCase
+- TypeFamilies
+- DeriveGeneric
+- ScopedTypeVariables
+- TupleSections
+- FlexibleContexts
+- FlexibleInstances
+- UndecidableInstances
+- GeneralizedNewtypeDeriving
+- StandaloneDeriving
+- MultiParamTypeClasses
+- DeriveFunctor
+- DeriveTraversable
+- FunctionalDependencies
+- Rank2Types
+- TypeOperators
+- InstanceSigs
+- DataKinds
+- GADTs
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/Latex#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- containers
+
+library:
+  source-dirs: src
+
+executables:
+  Latex-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -fwarn-incomplete-patterns
+    dependencies:
+    - Latex
+
+tests:
+  Latex-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - Latex
