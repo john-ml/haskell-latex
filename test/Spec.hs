@@ -4,4 +4,4 @@ import qualified Data.Set as Set
 
 main :: IO ()
 main = do
-  putStrLn . show $ Document [(Verbatim "", Precedence Set.empty 0)]
+  putStrLn $ show ("a" + ("b" + 3 / 5 + 4) / "x" :: Document)
