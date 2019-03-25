@@ -52,17 +52,17 @@ dependencies:
 library:
   source-dirs: src
 
-executables:
-  Latex-exe:
-    main:                Main.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -fwarn-incomplete-patterns
-    dependencies:
-    - Latex
+# executables:
+#   Latex-exe:
+#     main:                Main.hs
+#     source-dirs:         app
+#     ghc-options:
+#     - -threaded
+#     - -rtsopts
+#     - -with-rtsopts=-N
+#     - -fwarn-incomplete-patterns
+#     dependencies:
+#     - Latex
 
 tests:
   Latex-test:

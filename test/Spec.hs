@@ -2,7 +2,7 @@ import Latex
 
 main :: IO ()
 main = do
-  let asDoc a = a :: Document
+  let asDoc a = a :: Doc
   print . asDoc $ 1 + 1 * 2
   print . asDoc $ 1 + 1 === 2 \/ 2 + 2 === 4
   print . asDoc $ 1 ∧ 2 ∨ 3
