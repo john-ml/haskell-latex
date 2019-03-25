@@ -392,11 +392,15 @@ infixl 5 ∪
 
 -------------------- Structures --------------------
 
+---------- Misc. ----------
+
+ref :: Name -> ParaM a
+ref s = ParaM . fromString $ "\\ref{" ++ s++ "}"
+
 ---------- Headings ----------
 
--- Create heading of type t with title s
 heading :: Name -> Name -> ParaM a -> ParaM a
-heading t s d = (fromString $ "\\" ++ t ++ "{" ++ s ++ "}\n") <> d
+heading kind title body = (fromString $ "\\" ++ kind ++ "{" ++ title ++ "}\n") <> body
 
 part = heading "part"
 part' = heading "part*"
@@ -406,6 +410,16 @@ section = heading "section"
 section' = heading "section*"
 subsection = heading "subsection"
 subsection' = heading "subsection*"
+
+---------- Figures ----------
+
+figure :: Name -> Name -> ParaM a -> ParaM a
+figure label caption body =
+  "\\begin{figure}\n"
+  <> body
+  <> (fromString $ "\n\\caption{" ++ caption ++ "}\n")
+  <> (fromString $ "\\label{" ++ label ++ "}\n")
+  <> "\\end{figure}\n"
 
 -- Lists (enumerated with various bullet styles)
 -- Tables
