@@ -76,7 +76,7 @@ instance Show Doc where
       where
         go' q d = brac $ parenPrec p q (go q d)
 
--- -------------------- Basic documents --------------------
+-------------------- Basic documents --------------------
 
 -- Mark components with the highest precedence
 atoms :: [Latex] -> Doc
@@ -115,7 +115,29 @@ postfix f tags n l = Doc [Child l, Verbatim f] (precedence tags n)
 wrap :: String -> String -> Doc -> Doc
 wrap l r d = atoms [Verbatim l, Child d, Verbatim r]
 
--- -------------------- Handy instances --------------------
+-------------------- Document templates --------------------
+
+-- Import a bunch of math packages
+use :: [Name] -> Doc
+use = mconcat . map (\ s -> fromString $ "\\usepackage{" ++ s ++ "}\n")
+
+mathPkgs = use ["amsmath", "amsthm", "amsfonts", "setspace"]
+
+-- Standard double-spaced document with class s
+document :: String -> Doc -> Doc
+document s d =
+  (fromString $ "\\documentclass{" ++ s ++ "}\n")
+  <> mathPkgs
+  <> "\\begin{document}\n"
+  <> "\\doublespacing\n"
+  <> d
+  <> "\\end{document}\n"
+
+article = document "article"
+report = document "report"
+book = document "book"
+
+-------------------- Handy instances --------------------
 
 instance IsString Latex where
   fromString = Verbatim
@@ -124,7 +146,7 @@ instance IsString Latex where
 instance IsString Doc where
   fromString = verbatim
 
--- -- Lists of strings for commands
+-- Lists of strings for commands
 -- instance IsList Doc where
 --   type Item Doc = String
 --   fromList = \case
@@ -150,17 +172,14 @@ instance Fractional Doc where
 instance Semigroup Doc where Doc l p <> Doc r q = Doc (l ++ r) p
 instance Monoid Doc where mempty = empty
 
--- -------------------- do notation instances --------------------
--- One for each mode?
+-------------------- Default mode --------------------
 
--- -------------------- Default mode --------------------
-
-newtype ParaM a = ParaM { doc :: Doc } deriving (Functor)
+newtype ParaM a = ParaM { doc :: Doc } deriving (Functor, Semigroup, Monoid)
 instance Applicative ParaM where pure = undefined; liftA2 = undefined
 
 -- Concatenate adjacent documents
 instance Monad ParaM where
-  ParaM l >> ParaM r = ParaM (l <> " " <> r)
+  ParaM l >> ParaM r = ParaM (l <> r)
   (>>=) = undefined
 
 -- Make paragraph
@@ -174,16 +193,124 @@ instance IsList (ParaM a) where
   fromList = ParaM . wrap "$" "$" . mconcat
   toList = error "toList :: [Doc] -> ParaM a"
 
--- -------------------- Variable names --------------------
+-------------------- Variable names --------------------
 
 a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z :: IsString a => a
 [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]
   = map (fromString . pure) (['a'..'z'] :: String)
 
--- -------------------- Math --------------------
+a', b', c', d', e', f', g', h', i', j', k', l', m', n', o',
+    p', q', r', s', t', u', v', w', x', y', z' :: IsString a => a
+[a', b', c', d', e', f', g', h', i', j', k', l', m', n', o',
+    p', q', r', s', t', u', v', w', x', y', z']
+  = map (fromString . (: "'")) (['a'..'z'] :: String)
+
+a0, b0, c0, d0, e0, f0, g0, h0, i0, j0, k0, l0, m0, n0, o0,
+    p0, q0, r0, s0, t0, u0, v0, w0, x0, y0, z0 :: IsString a => a
+[a0, b0, c0, d0, e0, f0, g0, h0, i0, j0, k0, l0, m0, n0, o0,
+    p0, q0, r0, s0, t0, u0, v0, w0, x0, y0, z0]
+  = map (fromString . ('{' :) . (: "_0}")) (['a'..'z'] :: String)
+
+a1, b1, c1, d1, e1, f1, g1, h1, i1, j1, k1, l1, m1, n1, o1,
+    p1, q1, r1, s1, t1, u1, v1, w1, x1, y1, z1 :: IsString a => a
+[a1, b1, c1, d1, e1, f1, g1, h1, i1, j1, k1, l1, m1, n1, o1,
+    p1, q1, r1, s1, t1, u1, v1, w1, x1, y1, z1]
+  = map (fromString . ('{' :) . (: "_1}")) (['a'..'z'] :: String)
+
+a2, b2, c2, d2, e2, f2, g2, h2, i2, j2, k2, l2, m2, n2, o2,
+    p2, q2, r2, s2, t2, u2, v2, w2, x2, y2, z2 :: IsString a => a
+[a2, b2, c2, d2, e2, f2, g2, h2, i2, j2, k2, l2, m2, n2, o2,
+    p2, q2, r2, s2, t2, u2, v2, w2, x2, y2, z2]
+  = map (fromString . ('{' :) . (: "_2}")) (['a'..'z'] :: String)
+
+a3, b3, c3, d3, e3, f3, g3, h3, i3, j3, k3, l3, m3, n3, o3,
+    p3, q3, r3, s3, t3, u3, v3, w3, x3, y3, z3 :: IsString a => a
+[a3, b3, c3, d3, e3, f3, g3, h3, i3, j3, k3, l3, m3, n3, o3,
+    p3, q3, r3, s3, t3, u3, v3, w3, x3, y3, z3]
+  = map (fromString . ('{' :) . (: "_3}")) (['a'..'z'] :: String)
+
+a4, b4, c4, d4, e4, f4, g4, h4, i4, j4, k4, l4, m4, n4, o4,
+    p4, q4, r4, s4, t4, u4, v4, w4, x4, y4, z4 :: IsString a => a
+[a4, b4, c4, d4, e4, f4, g4, h4, i4, j4, k4, l4, m4, n4, o4,
+    p4, q4, r4, s4, t4, u4, v4, w4, x4, y4, z4]
+  = map (fromString . ('{' :) . (: "_4}")) (['a'..'z'] :: String)
+
+a5, b5, c5, d5, e5, f5, g5, h5, i5, j5, k5, l5, m5, n5, o5,
+    p5, q5, r5, s5, t5, u5, v5, w5, x5, y5, z5 :: IsString a => a
+[a5, b5, c5, d5, e5, f5, g5, h5, i5, j5, k5, l5, m5, n5, o5,
+    p5, q5, r5, s5, t5, u5, v5, w5, x5, y5, z5]
+  = map (fromString . ('{' :) . (: "_5}")) (['a'..'z'] :: String)
+
+a6, b6, c6, d6, e6, f6, g6, h6, i6, j6, k6, l6, m6, n6, o6,
+    p6, q6, r6, s6, t6, u6, v6, w6, x6, y6, z6 :: IsString a => a
+[a6, b6, c6, d6, e6, f6, g6, h6, i6, j6, k6, l6, m6, n6, o6,
+    p6, q6, r6, s6, t6, u6, v6, w6, x6, y6, z6]
+  = map (fromString . ('{' :) . (: "_6}")) (['a'..'z'] :: String)
+
+a7, b7, c7, d7, e7, f7, g7, h7, i7, j7, k7, l7, m7, n7, o7,
+    p7, q7, r7, s7, t7, u7, v7, w7, x7, y7, z7 :: IsString a => a
+[a7, b7, c7, d7, e7, f7, g7, h7, i7, j7, k7, l7, m7, n7, o7,
+    p7, q7, r7, s7, t7, u7, v7, w7, x7, y7, z7]
+  = map (fromString . ('{' :) . (: "_7}")) (['a'..'z'] :: String)
+
+a8, b8, c8, d8, e8, f8, g8, h8, i8, j8, k8, l8, m8, n8, o8,
+    p8, q8, r8, s8, t8, u8, v8, w8, x8, y8, z8 :: IsString a => a
+[a8, b8, c8, d8, e8, f8, g8, h8, i8, j8, k8, l8, m8, n8, o8,
+    p8, q8, r8, s8, t8, u8, v8, w8, x8, y8, z8]
+  = map (fromString . ('{' :) . (: "_8}")) (['a'..'z'] :: String)
+
+a9, b9, c9, d9, e9, f9, g9, h9, i9, j9, k9, l9, m9, n9, o9,
+    p9, q9, r9, s9, t9, u9, v9, w9, x9, y9, z9 :: IsString a => a
+[a9, b9, c9, d9, e9, f9, g9, h9, i9, j9, k9, l9, m9, n9, o9,
+    p9, q9, r9, s9, t9, u9, v9, w9, x9, y9, z9]
+  = map (fromString . ('{' :) . (: "_9}")) (['a'..'z'] :: String)
+
+ai, bi, ci, di, ei, fi, gi, hi, ii, ji, ki, li, mi, ni, oi,
+    pi, qi, ri, si, ti, ui, vi, wi, xi, yi, zi :: IsString a => a
+[ai, bi, ci, di, ei, fi, gi, hi, ii, ji, ki, li, mi, ni, oi,
+    pi, qi, ri, si, ti, ui, vi, wi, xi, yi, zi]
+  = map (fromString . ('{' :) . (: "_i}")) (['a'..'z'] :: String)
+
+aj, bj, cj, dj, ej, fj, gj, hj, ij, jj, kj, lj, mj, nj, oj,
+    pj, qj, rj, sj, tj, uj, vj, wj, xj, yj, zj :: IsString a => a
+[aj, bj, cj, dj, ej, fj, gj, hj, ij, jj, kj, lj, mj, nj, oj,
+    pj, qj, rj, sj, tj, uj, vj, wj, xj, yj, zj]
+  = map (fromString . ('{' :) . (: "_j}")) (['a'..'z'] :: String)
+
+ak, bk, ck, dk, ek, fk, gk, hk, ik, jk, kk, lk, mk, nk, ok,
+    pk, qk, rk, sk, tk, uk, vk, wk, xk, yk, zk :: IsString a => a
+[ak, bk, ck, dk, ek, fk, gk, hk, ik, jk, kk, lk, mk, nk, ok,
+    pk, qk, rk, sk, tk, uk, vk, wk, xk, yk, zk]
+  = map (fromString . ('{' :) . (: "_k}")) (['a'..'z'] :: String)
+
+an, bn, cn, dn, en, fn, gn, hn, jn, kn, ln, mn, nn, on,
+    pn, qn, rn, sn, tn, un, vn, wn, xn, yn, zn :: IsString a => a
+[an, bn, cn, dn, en, fn, gn, hn, jn, kn, ln, mn, nn, on,
+    pn, qn, rn, sn, tn, un, vn, wn, xn, yn, zn]
+  = map (fromString . ('{' :) . (: "_n}")) (['a'..'z'] :: String)
+
+am, bm, cm, dm, em, fm, gm, hm, im, jm, km, lm, mm, nm, om,
+    pm, qm, rm, sm, tm, um, vm, wm, xm, ym, zm :: IsString a => a
+[am, bm, cm, dm, em, fm, gm, hm, im, jm, km, lm, mm, nm, om,
+    pm, qm, rm, sm, tm, um, vm, wm, xm, ym, zm]
+  = map (fromString . ('{' :) . (: "_m}")) (['a'..'z'] :: String)
+
+ap, bp, cp, dp, ep, fp, gp, hp, ip, jp, kp, lp, mp, np, op,
+    pp, qp, rp, sp, tp, up, vp, wp, xp, yp, zp :: IsString a => a
+[ap, bp, cp, dp, ep, fp, gp, hp, ip, jp, kp, lp, mp, np, op,
+    pp, qp, rp, sp, tp, up, vp, wp, xp, yp, zp]
+  = map (fromString . ('{' :) . (: "_p}")) (['a'..'z'] :: String)
+
+aq, bq, cq, dq, eq, fq, gq, hq, iq, jq, kq, lq, mq, nq, oq,
+    pq, qq, rq, sq, tq, uq, vq, wq, xq, yq, zq :: IsString a => a
+[aq, bq, cq, dq, eq, fq, gq, hq, iq, jq, kq, lq, mq, nq, oq,
+    pq, qq, rq, sq, tq, uq, vq, wq, xq, yq, zq]
+  = map (fromString . ('{' :) . (: "_q}")) (['a'..'z'] :: String)
+
+-------------------- Math --------------------
 -- Every unicode character must have an equivalent ASCII approximation
 
--- ---------- Logic ----------
+---------- Logic ----------
 
 top = prec ["logic", "lattices"] 0 $ atoms [Command "top" empty]
 bot = prec ["logic", "lattices"] 0 $ atoms [Command "bot" empty]
@@ -205,7 +332,7 @@ forall x e = Doc ["\\forall ", Child x, ".", Child e] (precedence ["logic"] 90)
 exists :: Doc -> Doc -> Doc
 exists x e = Doc ["\\exists ", Child x, ".", Child e] (precedence ["logic"] 90)
 
--- ---------- Arrows ----------
+---------- Arrows ----------
 
 infixl 2 ===>
 infixl 2 --->
@@ -232,14 +359,14 @@ a <=> b  = (operator "\\Leftrightarrow" [] 60 a b)     { dPrec = Prec Nothing 70
 a <--> b = (operator "\\longleftrightarrow" [] 80 a b) { dPrec = Prec Nothing 70 }
 a <-> b  = (operator "\\leftrightarrow" [] 60 a b)     { dPrec = Prec Nothing 70 }
 
--- ---------- (In)equality ----------
+---------- (In)equality ----------
 
 infixl 3 ===
 infixl 3 =/=
 a === b = (operator "=" [] 70 a b) { dPrec = Prec Nothing 70 }
 a =/= b = (operator "\\ne" [] 70 a b) { dPrec = Prec Nothing 70 }
 
--- ---------- Sets ----------
+---------- Sets ----------
 
 emptyset = prec ["sets"] 0 $ atoms [Command "emptyset" empty]
 ø = emptyset
@@ -261,9 +388,24 @@ infixl 5 ∪
 
 -- [] for subscripting
 
--- -------------------- CS --------------------
+-------------------- CS --------------------
 
--- -------------------- Structures --------------------
+-------------------- Structures --------------------
+
+---------- Headings ----------
+
+-- Create heading of type t with title s
+heading :: Name -> Name -> ParaM a -> ParaM a
+heading t s d = (fromString $ "\\" ++ t ++ "{" ++ s ++ "}\n") <> d
+
+part = heading "part"
+part' = heading "part*"
+chapter = heading "chapter"
+chapter' = heading "chapter*"
+section = heading "section"
+section' = heading "section*"
+subsection = heading "subsection"
+subsection' = heading "subsection*"
 
 -- Lists (enumerated with various bullet styles)
 -- Tables
