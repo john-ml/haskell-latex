@@ -59,7 +59,6 @@ parenPrec parent child s
 data Latex
   = Command Name Document
   | Child Document
-  | Paragraph String
   | Verbatim String
 
 -- An entire document
@@ -73,16 +72,11 @@ instance Show Document where
     go p = \case
       Command f (Document l' q) -> "\\" ++ f ++ " " ++ concatMap (go' q) l'
       Child d@(Document l' q) -> brac . parenPrec p q $ show d
-      Paragraph s -> "\n\n" ++ s ++ "\n\n"
       Verbatim s -> s
       where
         go' q d = brac $ parenPrec p q (go q d)
 
 -- -------------------- Basic documents --------------------
-
--- Identity function specialized to Document. Slightly less noisy than the :: Document annotation
-doc :: Document -> Document
-doc = id
 
 -- Mark components with the highest precedence
 atoms :: [Latex] -> Document
@@ -98,9 +92,6 @@ prec tags n (Document l _) = Document l (precedence tags n)
 atomize :: Document -> Document
 atomize (Document l p) = atoms l
 
-nested :: Document -> Latex
-nested = Child . atomize
-
 -- 'inline LaTeX'
 verbatim :: String -> Document
 verbatim s = atoms [Verbatim s]
@@ -114,15 +105,15 @@ operator f tags n l r =
 
 -- Prefix operator with given precedence
 prefix :: Name -> [Name] -> Natural -> Document -> Document
-prefix f tags n r = Document [Verbatim f, nested r] (precedence tags n)
+prefix f tags n r = Document [Verbatim f, Child r] (precedence tags n)
 
 -- Postfix operator with given precedence
 postfix :: Name -> [Name] -> Natural -> Document -> Document
-postfix f tags n l = Document [nested l, Verbatim f] (precedence tags n)
+postfix f tags n l = Document [Child l, Verbatim f] (precedence tags n)
 
 -- Surround a document with the given left and right delimiters
 wrap :: String -> String -> Document -> Document
-wrap l r d = atoms [Verbatim $ "\\left " ++ l, nested d, Verbatim $ "\\right " ++ r]
+wrap l r d = atoms [Verbatim l, Child d, Verbatim r]
 
 -- -------------------- Handy instances --------------------
 
@@ -146,14 +137,48 @@ instance Num Document where
   (+) = operator "+" ["arithmetic"] 50
   (-) = operator "-" ["arithmetic"] 50
   (*) = operator "*" ["arithmetic"] 40
-  abs = wrap "|" "|"
+  abs = wrap "\\left|" "\\right|"
   signum = error "not implemented: signum on Documents"
   fromInteger = verbatim . show
 
 -- Rational literals + division
 instance Fractional Document where
-  l / r = atoms [Command "frac" $ atoms [nested l, nested r]] where
+  l / r = atoms [Command "frac" $ atoms [Child l, Child r]] where
   fromRational r = fromInteger (numerator r) / fromInteger (denominator r)
+
+-- Placing documents side by side
+instance Semigroup Document where Document l p <> Document r q = Document (l ++ r) p
+instance Monoid Document where mempty = empty
+
+-- -------------------- do notation instances --------------------
+-- One for each mode?
+
+-- -------------------- Default mode --------------------
+
+newtype ParaM a = ParaM { doc :: Document } deriving (Functor)
+instance Applicative ParaM where pure = undefined; liftA2 = undefined
+
+-- Concatenate adjacent documents
+instance Monad ParaM where
+  ParaM l >> ParaM r = ParaM (l <> " " <> r)
+  (>>=) = undefined
+
+-- Make paragraph
+instance IsString (ParaM a) where fromString = ParaM . verbatim
+para :: ParaM a -> ParaM a
+para = ParaM . wrap "\n\n" "\n\n" . doc
+
+-- Insert 'inline math'
+instance IsList (ParaM a) where
+  type Item (ParaM a) = Document
+  fromList = ParaM . wrap "$" "$" . mconcat
+  toList = error "toList :: [Document] -> ParaM a"
+
+-- -------------------- Variable names --------------------
+
+a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z :: IsString a => a
+[a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]
+  = map (fromString . pure) (['a'..'z'] :: String)
 
 -- -------------------- Math --------------------
 -- Every unicode character must have an equivalent ASCII approximation
@@ -176,6 +201,9 @@ infixl 5 ∨
 
 forall :: Document -> Document -> Document
 forall x e = Document ["\\forall ", Child x, ".", Child e] (precedence ["logic"] 90)
+
+exists :: Document -> Document -> Document
+exists x e = Document ["\\exists ", Child x, ".", Child e] (precedence ["logic"] 90)
 
 -- ---------- Arrows ----------
 

@@ -30,6 +30,7 @@ default-extensions:
 - InstanceSigs
 - DataKinds
 - GADTs
+- NoMonomorphismRestriction
 
 extra-source-files:
 - README.md
