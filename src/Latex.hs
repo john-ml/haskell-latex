@@ -4,6 +4,7 @@ import Numeric.Natural
 import Data.String
 import Data.Maybe (fromMaybe)
 import Control.Applicative (liftA2)
+import Data.Ratio
 import qualified Data.Char as Char
 import qualified Data.Set as Set; import Data.Set (Set)
 
@@ -87,23 +88,28 @@ atoms l = Document l (Precedence Nothing 0)
 atomize :: Document -> Document
 atomize (Document l p) = atoms l
 
+nested :: Document -> Latex
+nested = Child . atomize
+
 -- 'inline LaTeX'
 verbatim :: String -> Document
 verbatim s = atoms [Verbatim s]
 
 -- An infix operator with the given precedence
 operator :: Name -> [Name] -> Natural -> Document -> Document -> Document
-operator f tags n l r = Document [Child $ atomize l, Verbatim f, Child $ atomize r] (precedence tags n)
+operator f tags n l r = Document [nested l, Verbatim f, nested r] (precedence tags n)
 
 -- Surround a document with the given left and right delimiters
 wrap :: String -> String -> Document -> Document
-wrap l r d = atoms [Verbatim $ "\\left " ++ l, Child d, Verbatim $ "\\right " ++ r]
+wrap l r d = atoms [Verbatim $ "\\left " ++ l, nested d, Verbatim $ "\\right " ++ r]
 
 -- -------------------- Handy instances --------------------
 
+-- Strings for inline LaTeX
 instance IsString Document where
   fromString = verbatim
 
+-- Integer literals + arithmetic operators
 instance Num Document where
   (+) = operator "+" ["arithmetic"] 50
   (-) = operator "-" ["arithmetic"] 50
@@ -112,5 +118,27 @@ instance Num Document where
   signum = error "not implemented: signum on Documents"
   fromInteger = verbatim . show
 
+-- Rational literals + division
 instance Fractional Document where
-  l / r = atoms [Command "frac" . atoms $ map Child [atomize l, atomize r]] where
+  l / r = atoms [Command "frac" $ atoms [nested l, nested r]] where
+  fromRational r = fromInteger (numerator r) / fromInteger (denominator r)
+
+-- -------------------- Math --------------------
+
+-- Every unicode character must have an equivalent ASCII approximation
+-- (\\//), (//\\), (/\), (\/), (∧), (∨)
+-- (|^|), (|.|), (\./), (/^\), (∪), (∩)
+-- (==>), (===>), (<==), (<===), (<--), (<---), (-->), (--->), (~~>)
+-- [] for subscripting
+
+-- -------------------- CS --------------------
+
+-- -------------------- Structures --------------------
+
+-- Lists (enumerated with various bullet styles)
+-- Tables
+-- Pseudocode
+-- Source code
+-- Tikz diagrams
+-- Graphs
+-- Figures (can contain any of the above)
