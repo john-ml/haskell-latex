@@ -2,6 +2,8 @@ module Latex where
 
 import Numeric.Natural
 import Data.String
+import Data.Maybe (fromMaybe)
+import Control.Applicative (liftA2)
 import qualified Data.Char as Char
 import qualified Data.Set as Set; import Data.Set (Set)
 
@@ -24,17 +26,7 @@ cmpPrec (Precedence a n) (Precedence b m)
   | disjoint a b = Nothing
   | otherwise = Just $ flip compare n m
   where
-    disjoint Nothing _ = False
-    disjoint _ Nothing = False
-    disjoint (Just a) (Just b) = Set.disjoint a b
-
--- Parenthesize if parent is higher than child or incomparable
-parenPrec :: Precedence -> Precedence -> String -> String
-parenPrec parent child s =
-  case parent `cmpPrec` child of
-    Just GT -> "{\\left(" ++ s ++ "\\right)}"
-    Nothing -> "{\\left(" ++ s ++ "\\right)}"
-    _ -> s
+    disjoint = (fromMaybe False .) . liftA2 Set.disjoint
 
 -- Surround with curly braces if necessary
 brac :: String -> String
@@ -42,19 +34,33 @@ brac s
   | atomic s = s
   | otherwise = "{" ++ s ++ "}"
   where
-    (f ||| g) x = f x || g x
-    atomic = all Char.isDigit ||| all Char.isAlpha
+    atomic = \case
+      [_] -> True
+      s@('{' : _) -> last s == '}'
+      s -> all Char.isDigit s || all Char.isAlpha s
+
+-- Parenthesize if parent is higher than child or incomparable
+parenPrec :: Precedence -> Precedence -> String -> String
+parenPrec parent child s
+  | parent `gtr` child = brac $ "\\left(" ++ s ++ "\\right)"
+  | otherwise = s
+  where
+    a `gtr` b =
+      case a `cmpPrec` b of
+        Just GT -> True
+        Nothing -> True
+        _ -> False
 
 -- One component of a document
-data LatexF a
-  = Command Name a
-  | Child a
+data Latex
+  = Command Name Document
+  | Child Document
   | Paragraph String
   | Verbatim String
 
 -- An entire document
 data Document = Document
-  { dItems :: [LatexF Document]
+  { dItems :: [Latex]
   , dPrec :: Precedence
   }
 
@@ -70,9 +76,16 @@ instance Show Document where
 
 -- -------------------- Basic documents --------------------
 
+-- Identity function specialized to Document. Slightly less noisy than the :: Document annotation
+doc :: Document -> Document
+doc = id
+
 -- Mark components with the highest precedence
-atoms :: [LatexF Document] -> Document
+atoms :: [Latex] -> Document
 atoms l = Document l (Precedence Nothing 0)
+
+atomize :: Document -> Document
+atomize (Document l p) = atoms l
 
 -- 'inline LaTeX'
 verbatim :: String -> Document
@@ -80,7 +93,7 @@ verbatim s = atoms [Verbatim s]
 
 -- An infix operator with the given precedence
 operator :: Name -> [Name] -> Natural -> Document -> Document -> Document
-operator f tags n l r = Document [Child l, Verbatim f, Child r] (precedence tags n)
+operator f tags n l r = Document [Child $ atomize l, Verbatim f, Child $ atomize r] (precedence tags n)
 
 -- Surround a document with the given left and right delimiters
 wrap :: String -> String -> Document -> Document
@@ -100,4 +113,4 @@ instance Num Document where
   fromInteger = verbatim . show
 
 instance Fractional Document where
-  l / r = atoms [Command "frac" $ atoms [Child l, Child r]]
+  l / r = atoms [Command "frac" . atoms $ map Child [atomize l, atomize r]] where
