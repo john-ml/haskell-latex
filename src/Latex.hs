@@ -196,7 +196,7 @@ instance Monad ParaM where
 
 -- Make paragraph
 para :: Mode m => ParaM a -> m a
-para = mkMode . wrap "\n\n" "\n\n" . doc
+para = mkMode . ("\n\n" <>) . doc
 
 -- Insert 'inline math'
 instance IsList (ParaM a) where
