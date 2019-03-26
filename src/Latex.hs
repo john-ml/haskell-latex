@@ -32,6 +32,24 @@ cmpPrec (Prec a n) (Prec b m)
   where
     disjoint = (fromMaybe False .) . liftA2 Set.disjoint
 
+-- 'max' of two precedences
+joinPrec :: Prec -> Prec -> Prec
+joinPrec p@(Prec a n) q@(Prec b m) =
+  case p `cmpPrec` q of
+    Just GT -> p
+    Just EQ -> p
+    Just LT -> q
+    Nothing -> Prec Nothing $ n `min` m
+
+-- 'min' of two precedences
+meetPrec :: Prec -> Prec -> Prec
+meetPrec p@(Prec a n) q@(Prec b m) =
+  case p `cmpPrec` q of
+    Just GT -> q
+    Just EQ -> q
+    Just LT -> p
+    Nothing -> Prec Nothing $ n `max` m
+
 -- Surround with curly braces if necessary
 brac :: String -> String
 brac s
@@ -123,13 +141,14 @@ use :: [Name] -> Doc
 use = mconcat . map (\ s -> fromString $ "\\usepackage{" ++ s ++ "}\n")
 
 mathPkgs = ["amsmath", "amsthm", "amsfonts", "setspace"]
-graphicsPkgs = ["amsmath", "amsthm", "amsfonts", "setspace", "graphicx"]
+graphicsPkgs = ["graphicx", "caption"]
 
 -- Standard double-spaced document with class s
 document :: String -> Doc -> Doc
 document s d =
   fromString ("\\documentclass{" ++ s ++ "}\n")
   <> use (mathPkgs ++ graphicsPkgs)
+  <> "\\captionsetup{width=0.8\\textwidth}\n"
   <> "\\begin{document}\n"
   <> "\\doublespacing\n"
   <> d
@@ -175,7 +194,7 @@ instance Floating Doc where
   a ** b = operator "^" ["arithmetic"] 30 a ("{" <> b <> "}")
 
 -- Placing documents side by side
-instance Semigroup Doc where Doc l p <> Doc r q = Doc (l ++ r) p
+instance Semigroup Doc where Doc l p <> Doc r q = Doc (l ++ r) (p `meetPrec` q)
 instance Monoid Doc where mempty = empty
 
 -------------------- Modes (for do notation sugar) --------------------
@@ -299,6 +318,7 @@ beta = greek "beta"
 gamma = greek "gamma"
 delta = greek "delta"
 epsilon = greek "epsilon"
+rho = greek "rho"
 tau = greek "tau"
 mu = greek "mu"
 nu = greek "nu"

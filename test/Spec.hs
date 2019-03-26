@@ -41,3 +41,5 @@ main = do
           "item 3.3.2"
           "item 3.3.3"
       "item 4"
+  print . doc . math $ a === b + c
+  print . asDoc $ a === b + c
