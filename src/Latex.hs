@@ -247,14 +247,15 @@ chart label filename caption = figure label caption (pic filename)
 newtype EnumM a = EnumM { unEnumM :: ParaM a } deriving (Functor, Applicative, Mode, IsString)
 
 instance Monad EnumM where
-  EnumM l >> EnumM r = EnumM $ do itemize l; "\\item\n"; r where
+  EnumM l >> EnumM r = EnumM $ do itemize l; itemize r where
+    itemize :: ParaM a -> ParaM a
     itemize = \case
       l@(ParaM (Doc (Verbatim ('\\':'i':'t':'e':'m':_) : _) _)) -> l
-      _ -> do "\\item\n"; l
+      l -> do "\\item\n"; l
   (>>=) = undefined
 
-enumerate :: EnumM a -> ParaM a
-enumerate (EnumM d) = do
+enumerate :: Mode m => EnumM a -> m a
+enumerate (EnumM d) = mkMode . dtMode $ do
   "\\begin{enumerate}\n"
   d
   "\\end{enumerate}\n"
