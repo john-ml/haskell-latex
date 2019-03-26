@@ -224,6 +224,8 @@ section = heading "section"
 section' = heading "section*"
 subsection = heading "subsection"
 subsection' = heading "subsection*"
+subsubsection = heading "subsubsection"
+subsubsection' = heading "subsubsection*"
 
 ---------- Figures ----------
 
@@ -250,7 +252,7 @@ instance Monad EnumM where
   EnumM l >> EnumM r = EnumM $ do itemize l; itemize r where
     itemize :: ParaM a -> ParaM a
     itemize = \case
-      l@(ParaM (Doc (Verbatim ('\\':'i':'t':'e':'m':_) : _) _)) -> l
+      l@(ParaM (Doc (Verbatim ('\n':'\\':'i':'t':'e':'m':_) : _) _)) -> l
       l -> do "\n\\item\n"; l
   (>>=) = undefined
 
