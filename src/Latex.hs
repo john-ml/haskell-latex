@@ -229,14 +229,14 @@ subsection' = heading "subsection*"
 
 figure :: Name -> Name -> ParaM a -> ParaM a
 figure label caption body = do
-  "\\begin{figure}\n"
+  "\n\\begin{figure}\n"
   body
   fromString $ "\n\\caption{" ++ caption ++ "}\n"
   fromString $ "\\label{" ++ label ++ "}\n"
   "\\end{figure}\n"
 
 pic :: Name -> ParaM a
-pic filename = fromString $ "\\includegraphics[width=\\linewidth]{" ++ filename ++ "}"
+pic filename = fromString $ "\n\\includegraphics[width=\\linewidth]{" ++ filename ++ "}\n"
 
 chart :: Name -> Name -> Name -> ParaM a
 chart label filename caption = figure label caption (pic filename)
@@ -251,14 +251,20 @@ instance Monad EnumM where
     itemize :: ParaM a -> ParaM a
     itemize = \case
       l@(ParaM (Doc (Verbatim ('\\':'i':'t':'e':'m':_) : _) _)) -> l
-      l -> do "\\item\n"; l
+      l -> do "\n\\item\n"; l
   (>>=) = undefined
 
-enumerate :: Mode m => EnumM a -> m a
-enumerate (EnumM d) = mkMode . dtMode $ do
-  "\\begin{enumerate}\n"
+enumeration :: Mode m => Name -> EnumM a -> m a
+enumeration s (EnumM d) = mkMode . dtMode $ do
+  fromString $ "\n\\begin{" ++ s ++ "}\n"
   d
-  "\\end{enumerate}\n"
+  fromString $ "\n\\end{" ++ s ++ "}\n"
+
+enumerate :: Mode m => EnumM a -> m a
+enumerate = enumeration "enumerate"
+
+itemize :: Mode m => EnumM a -> m a
+itemize = enumeration "itemize"
 
 -- Tables
 -- Pseudocode
