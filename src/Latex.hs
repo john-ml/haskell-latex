@@ -173,10 +173,21 @@ instance Fractional Doc where
 instance Semigroup Doc where Doc l p <> Doc r q = Doc (l ++ r) p
 instance Monoid Doc where mempty = empty
 
+-------------------- Modes (for do notation sugar) --------------------
+
+-- Fake monads isomorphic to Doc
+class Monad m => Mode m where
+  mkMode :: Doc -> m a
+  dtMode :: m a -> Doc
+
 -------------------- Default mode --------------------
 
-newtype ParaM a = ParaM { doc :: Doc } deriving (Functor, Semigroup, Monoid)
+newtype ParaM a = ParaM { doc :: Doc } deriving (Functor, Semigroup, Monoid, IsString)
 instance Applicative ParaM where pure = undefined; liftA2 = undefined
+
+instance Mode ParaM where
+  mkMode = ParaM
+  dtMode = doc
 
 -- Concatenate adjacent documents
 instance Monad ParaM where
@@ -184,15 +195,158 @@ instance Monad ParaM where
   (>>=) = undefined
 
 -- Make paragraph
-instance IsString (ParaM a) where fromString = ParaM . verbatim
-para :: ParaM a -> ParaM a
-para = ParaM . wrap "\n\n" "\n\n" . doc
+para :: Mode m => m a -> m a
+para = mkMode . wrap "\n\n" "\n\n" . dtMode
 
 -- Insert 'inline math'
 instance IsList (ParaM a) where
   type Item (ParaM a) = Doc
   fromList = ParaM . wrap "$" "$" . mconcat
   toList = error "toList :: [Doc] -> ParaM a"
+
+-------------------- Structures --------------------
+
+---------- Misc. ----------
+
+ref :: Name -> ParaM a
+ref s = ParaM . fromString $ "\\ref{" ++ s++ "}"
+
+---------- Headings ----------
+
+heading :: Name -> Name -> ParaM a -> ParaM a
+heading kind title body = fromString ("\\" ++ kind ++ "{" ++ title ++ "}\n") <> body
+
+part = heading "part"
+part' = heading "part*"
+chapter = heading "chapter"
+chapter' = heading "chapter*"
+section = heading "section"
+section' = heading "section*"
+subsection = heading "subsection"
+subsection' = heading "subsection*"
+
+---------- Figures ----------
+
+figure :: Name -> Name -> ParaM a -> ParaM a
+figure label caption body = do
+  "\\begin{figure}\n"
+  body
+  fromString $ "\n\\caption{" ++ caption ++ "}\n"
+  fromString $ "\\label{" ++ label ++ "}\n"
+  "\\end{figure}\n"
+
+pic :: Name -> ParaM a
+pic filename = fromString $ "\\includegraphics[width=\\linewidth]{" ++ filename ++ "}"
+
+chart :: Name -> Name -> Name -> ParaM a
+chart label filename caption = figure label caption (pic filename)
+
+---------- Lists ----------
+-- (enumerated with various bullet styles)
+
+newtype EnumM a = EnumM { unEnumM :: ParaM a } deriving (Functor, Applicative, Mode, IsString)
+
+instance Monad EnumM where
+  EnumM l >> EnumM r = EnumM $ do itemize l; "\\item\n"; r where
+    itemize = \case
+      l@(ParaM (Doc (Verbatim ('\\':'i':'t':'e':'m':_) : _) _)) -> l
+      _ -> do "\\item\n"; l
+  (>>=) = undefined
+
+enumerate :: EnumM a -> ParaM a
+enumerate (EnumM d) = do
+  "\\begin{enumerate}\n"
+  d
+  "\\end{enumerate}\n"
+
+-- Tables
+-- Pseudocode
+-- Source code
+-- Tikz diagrams
+-- Graphs
+
+-------------------- Math --------------------
+-- Every unicode character must have an equivalent ASCII approximation
+
+---------- Logic ----------
+
+top = prec ["logic", "lattices"] 0 $ atoms [Command "top" empty]
+bot = prec ["logic", "lattices"] 0 $ atoms [Command "bot" empty]
+neg = prefix "\\lneg" ["logic"] 30
+
+infixl 6 /\
+infixl 6 ∧
+infixl 5 \/
+infixl 5 ∨
+(/\) = operator "\\land" ["logic"] 40
+(\/) = operator "\\lor" ["logic"] 50
+(∧) = (/\)
+(∨) = (\/)
+-- (\\//), (//\\)
+
+forall :: Doc -> Doc -> Doc
+forall x e = Doc ["\\forall ", Child x, ".", Child e] (precedence ["logic"] 90)
+
+exists :: Doc -> Doc -> Doc
+exists x e = Doc ["\\exists ", Child x, ".", Child e] (precedence ["logic"] 90)
+
+---------- Arrows ----------
+
+infixl 2 ===>
+infixl 2 --->
+infixl 2 <===
+infixl 2 <---
+infixl 2 <==>
+infixl 2 <-->
+infixl 4 <=>
+infixl 4 <->
+infixl 4 ==>
+infixl 4 -->
+infixl 4 <==
+infixl 4 <--
+a ===> b = (operator "\\Longrightarrow" [] 80 a b)     { dPrec = Prec Nothing 70 }
+a ==> b  = (operator "\\Rightarrow" [] 60 a b)         { dPrec = Prec Nothing 70 }
+a ---> b = (operator "\\longrightarrow" [] 80 a b)     { dPrec = Prec Nothing 70 }
+a --> b  = (operator "\\rightarrow" [] 60 a b)         { dPrec = Prec Nothing 70 }
+a <=== b = (operator "\\Longleftarrow" [] 80 a b)      { dPrec = Prec Nothing 70 }
+a <== b  = (operator "\\Leftarrow" [] 60 a b)          { dPrec = Prec Nothing 70 }
+a <--- b = (operator "\\longleftarrow" [] 80 a b)      { dPrec = Prec Nothing 70 }
+a <-- b  = (operator "\\leftarrow" [] 60 a b)          { dPrec = Prec Nothing 70 }
+a <==> b = (operator "\\Longleftrightarrow" [] 80 a b) { dPrec = Prec Nothing 70 }
+a <=> b  = (operator "\\Leftrightarrow" [] 60 a b)     { dPrec = Prec Nothing 70 }
+a <--> b = (operator "\\longleftrightarrow" [] 80 a b) { dPrec = Prec Nothing 70 }
+a <-> b  = (operator "\\leftrightarrow" [] 60 a b)     { dPrec = Prec Nothing 70 }
+
+---------- (In)equality ----------
+
+infixl 3 ===
+infixl 3 =/=
+a === b = (operator "=" [] 70 a b) { dPrec = Prec Nothing 70 }
+a =/= b = (operator "\\ne" [] 70 a b) { dPrec = Prec Nothing 70 }
+
+---------- Sets ----------
+
+emptyset = prec ["sets"] 0 $ atoms [Command "emptyset" empty]
+ø = emptyset
+
+infixl 4 ∈
+within = operator "\\in" ["sets"] 60
+(∈) = within
+
+infixl 6 /^\
+infixl 6 ∩
+infixl 5 \./
+infixl 5 ∪
+(/^\) = operator "\\cap" ["sets"] 40
+(\./) = operator "\\cup" ["sets"] 50
+(∩) = (/^\)
+(∪) = (\./)
+
+-- Lattices: (|^|), (|.|)
+
+-- [] for subscripting
+
+-------------------- CS --------------------
 
 -------------------- Variable names --------------------
 
@@ -307,131 +461,3 @@ aq, bq, cq, dq, eq, fq, gq, hq, iq, jq, kq, lq, mq, nq, oq,
 [aq, bq, cq, dq, eq, fq, gq, hq, iq, jq, kq, lq, mq, nq, oq,
     pq, qq, rq, sq, tq, uq, vq, wq, xq, yq, zq]
   = map (fromString . ('{' :) . (: "_q}")) (['a'..'z'] :: String)
-
--------------------- Math --------------------
--- Every unicode character must have an equivalent ASCII approximation
-
----------- Logic ----------
-
-top = prec ["logic", "lattices"] 0 $ atoms [Command "top" empty]
-bot = prec ["logic", "lattices"] 0 $ atoms [Command "bot" empty]
-neg = prefix "\\lneg" ["logic"] 30
-
-infixl 6 /\
-infixl 6 ∧
-infixl 5 \/
-infixl 5 ∨
-(/\) = operator "\\land" ["logic"] 40
-(\/) = operator "\\lor" ["logic"] 50
-(∧) = (/\)
-(∨) = (\/)
--- (\\//), (//\\)
-
-forall :: Doc -> Doc -> Doc
-forall x e = Doc ["\\forall ", Child x, ".", Child e] (precedence ["logic"] 90)
-
-exists :: Doc -> Doc -> Doc
-exists x e = Doc ["\\exists ", Child x, ".", Child e] (precedence ["logic"] 90)
-
----------- Arrows ----------
-
-infixl 2 ===>
-infixl 2 --->
-infixl 2 <===
-infixl 2 <---
-infixl 2 <==>
-infixl 2 <-->
-infixl 4 <=>
-infixl 4 <->
-infixl 4 ==>
-infixl 4 -->
-infixl 4 <==
-infixl 4 <--
-a ===> b = (operator "\\Longrightarrow" [] 80 a b)     { dPrec = Prec Nothing 70 }
-a ==> b  = (operator "\\Rightarrow" [] 60 a b)         { dPrec = Prec Nothing 70 }
-a ---> b = (operator "\\longrightarrow" [] 80 a b)     { dPrec = Prec Nothing 70 }
-a --> b  = (operator "\\rightarrow" [] 60 a b)         { dPrec = Prec Nothing 70 }
-a <=== b = (operator "\\Longleftarrow" [] 80 a b)      { dPrec = Prec Nothing 70 }
-a <== b  = (operator "\\Leftarrow" [] 60 a b)          { dPrec = Prec Nothing 70 }
-a <--- b = (operator "\\longleftarrow" [] 80 a b)      { dPrec = Prec Nothing 70 }
-a <-- b  = (operator "\\leftarrow" [] 60 a b)          { dPrec = Prec Nothing 70 }
-a <==> b = (operator "\\Longleftrightarrow" [] 80 a b) { dPrec = Prec Nothing 70 }
-a <=> b  = (operator "\\Leftrightarrow" [] 60 a b)     { dPrec = Prec Nothing 70 }
-a <--> b = (operator "\\longleftrightarrow" [] 80 a b) { dPrec = Prec Nothing 70 }
-a <-> b  = (operator "\\leftrightarrow" [] 60 a b)     { dPrec = Prec Nothing 70 }
-
----------- (In)equality ----------
-
-infixl 3 ===
-infixl 3 =/=
-a === b = (operator "=" [] 70 a b) { dPrec = Prec Nothing 70 }
-a =/= b = (operator "\\ne" [] 70 a b) { dPrec = Prec Nothing 70 }
-
----------- Sets ----------
-
-emptyset = prec ["sets"] 0 $ atoms [Command "emptyset" empty]
-ø = emptyset
-
-infixl 4 ∈
-within = operator "\\in" ["sets"] 60
-(∈) = within
-
-infixl 6 /^\
-infixl 6 ∩
-infixl 5 \./
-infixl 5 ∪
-(/^\) = operator "\\cap" ["sets"] 40
-(\./) = operator "\\cup" ["sets"] 50
-(∩) = (/^\)
-(∪) = (\./)
-
--- Lattices: (|^|), (|.|)
-
--- [] for subscripting
-
--------------------- CS --------------------
-
--------------------- Structures --------------------
-
----------- Misc. ----------
-
-ref :: Name -> ParaM a
-ref s = ParaM . fromString $ "\\ref{" ++ s++ "}"
-
----------- Headings ----------
-
-heading :: Name -> Name -> ParaM a -> ParaM a
-heading kind title body = (fromString $ "\\" ++ kind ++ "{" ++ title ++ "}\n") <> body
-
-part = heading "part"
-part' = heading "part*"
-chapter = heading "chapter"
-chapter' = heading "chapter*"
-section = heading "section"
-section' = heading "section*"
-subsection = heading "subsection"
-subsection' = heading "subsection*"
-
----------- Figures ----------
-
-figure :: Name -> Name -> ParaM a -> ParaM a
-figure label caption body =
-  "\\begin{figure}\n"
-  <> body
-  <> (fromString $ "\n\\caption{" ++ caption ++ "}\n")
-  <> (fromString $ "\\label{" ++ label ++ "}\n")
-  <> "\\end{figure}\n"
-
-pic :: Name -> ParaM a
-pic filename = fromString $ "\\includegraphics[width=\\linewidth]{" ++ filename ++ "}"
-
-chart :: Name -> Name -> Name -> ParaM a
-chart label filename caption = figure label caption (pic filename)
-
--- Lists (enumerated with various bullet styles)
--- Tables
--- Pseudocode
--- Source code
--- Tikz diagrams
--- Graphs
--- Figures (can contain any of the above)
