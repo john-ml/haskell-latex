@@ -195,8 +195,8 @@ instance Monad ParaM where
   (>>=) = undefined
 
 -- Make paragraph
-para :: Mode m => m a -> m a
-para = mkMode . wrap "\n\n" "\n\n" . dtMode
+para :: Mode m => ParaM a -> m a
+para = mkMode . wrap "\n\n" "\n\n" . doc
 
 -- Insert 'inline math'
 instance IsList (ParaM a) where
