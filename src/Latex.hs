@@ -198,6 +198,10 @@ instance Monad ParaM where
 para :: Mode m => ParaM a -> m a
 para = mkMode . ("\n\n" <>) . doc
 
+-- Unindented paragraph
+slab :: Mode m => ParaM a -> m a
+slab = mkMode . ("\n\n\\noindent " <>) . doc
+
 -- Insert 'inline math'
 instance IsList (ParaM a) where
   type Item (ParaM a) = Doc
@@ -276,6 +280,14 @@ itemize = enumeration "itemize"
 
 -------------------- Math --------------------
 -- Every unicode character must have an equivalent ASCII approximation
+
+---------- Misc ----------
+
+par :: Doc -> Doc
+par = wrap "(" ")"
+
+(!) :: Doc -> Doc -> Doc
+a ! i = "{{" <> a <> "}_{" <> i <> "}}"
 
 ---------- Logic ----------
 
