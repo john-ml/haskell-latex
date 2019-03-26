@@ -4,6 +4,7 @@ import Numeric.Natural
 import Data.String
 import Data.Maybe (fromMaybe)
 import Control.Applicative (liftA2)
+import Data.List (intersperse)
 import Data.Ratio
 import qualified Data.Char as Char
 import qualified Data.Set as Set; import Data.Set (Set)
@@ -169,6 +170,10 @@ instance Fractional Doc where
   l / r = atoms [Command "frac" $ atoms [Child l, Child r]] where
   fromRational r = fromInteger (numerator r) / fromInteger (denominator r)
 
+-- Exponentiation
+instance Floating Doc where
+  a ** b = operator "^" ["arithmetic"] 30 a ("{" <> b <> "}")
+
 -- Placing documents side by side
 instance Semigroup Doc where Doc l p <> Doc r q = Doc (l ++ r) p
 instance Monoid Doc where mempty = empty
@@ -205,7 +210,7 @@ slab = mkMode . ("\n\n\\noindent " <>) . doc
 -- Insert 'inline math'
 instance IsList (ParaM a) where
   type Item (ParaM a) = Doc
-  fromList = ParaM . wrap "$" "$" . mconcat
+  fromList = ParaM . wrap "\\(" "\\)" . mconcat
   toList = error "toList :: [Doc] -> ParaM a"
 
 -------------------- Structures --------------------
@@ -281,13 +286,65 @@ itemize = enumeration "itemize"
 -------------------- Math --------------------
 -- Every unicode character must have an equivalent ASCII approximation
 
+math :: Mode m => Doc -> m a
+math d = mkMode $ "\n\\[" <> d <> "\\]\n"
+
+---------- Greek letters ----------
+
+greek :: Name -> Doc
+greek s = "{\\" <> verbatim s <> "}"
+
+alpha = greek "alpha"
+beta = greek "beta"
+gamma = greek "gamma"
+delta = greek "delta"
+epsilon = greek "epsilon"
+tau = greek "tau"
+mu = greek "mu"
+nu = greek "nu"
+sigma = greek "sigma"
+zeta = greek "zeta"
+
 ---------- Misc ----------
+
+sqr :: Doc -> Doc
+sqr = (** 2)
+
+infixl 7 `times`
+infixl 7 ×
+times = operator "\\times" ["arithmetic"] 40
+(×) = times
 
 par :: Doc -> Doc
 par = wrap "(" ")"
 
+infixl 4 !
 (!) :: Doc -> Doc -> Doc
 a ! i = "{{" <> a <> "}_{" <> i <> "}}"
+
+fn :: Doc -> [Doc] -> Doc
+fn f args = f <> "(" <> mconcat (intersperse "," args) <> ")"
+
+mathrm :: Doc -> Doc
+mathrm d = "{\\mathrm{" <> d <> "}}"
+
+mathbf :: Doc -> Doc
+mathbf d = "{\\mathbf{" <> d <> "}}"
+
+mathbb :: Doc -> Doc
+mathbb d = "{\\mathbb{" <> d <> "}}"
+
+mathcal :: Doc -> Doc
+mathcal d = "{\\mathcal{" <> d <> "}}"
+
+reals :: Doc
+reals = mathbb "R"
+
+diff :: Doc -> Doc
+diff x = mathrm "d" <> x
+
+integral :: Doc -> Doc -> Doc -> Doc -> Doc
+integral x lo hi e = "{\\int_{" <> lo <> "}^{" <> hi <> "}" <> e <> "~" <> diff x <> "}"
 
 ---------- Logic ----------
 
@@ -442,9 +499,9 @@ a9, b9, c9, d9, e9, f9, g9, h9, i9, j9, k9, l9, m9, n9, o9,
   = map (fromString . ('{' :) . (: "_9}")) (['a'..'z'] :: String)
 
 ai, bi, ci, di, ei, fi, gi, hi, ii, ji, ki, li, mi, ni, oi,
-    pi, qi, ri, si, ti, ui, vi, wi, xi, yi, zi :: IsString a => a
+    qi, ri, si, ti, ui, vi, wi, xi, yi, zi :: IsString a => a
 [ai, bi, ci, di, ei, fi, gi, hi, ii, ji, ki, li, mi, ni, oi,
-    pi, qi, ri, si, ti, ui, vi, wi, xi, yi, zi]
+    qi, ri, si, ti, ui, vi, wi, xi, yi, zi]
   = map (fromString . ('{' :) . (: "_i}")) (['a'..'z'] :: String)
 
 aj, bj, cj, dj, ej, fj, gj, hj, ij, jj, kj, lj, mj, nj, oj,
@@ -459,9 +516,9 @@ ak, bk, ck, dk, ek, fk, gk, hk, ik, jk, kk, lk, mk, nk, ok,
     pk, qk, rk, sk, tk, uk, vk, wk, xk, yk, zk]
   = map (fromString . ('{' :) . (: "_k}")) (['a'..'z'] :: String)
 
-an, bn, cn, dn, en, fn, gn, hn, jn, kn, ln, mn, nn, on,
+an, bn, cn, dn, en, gn, hn, jn, kn, ln, mn, nn, on,
     pn, qn, rn, sn, tn, un, vn, wn, xn, yn, zn :: IsString a => a
-[an, bn, cn, dn, en, fn, gn, hn, jn, kn, ln, mn, nn, on,
+[an, bn, cn, dn, en, gn, hn, jn, kn, ln, mn, nn, on,
     pn, qn, rn, sn, tn, un, vn, wn, xn, yn, zn]
   = map (fromString . ('{' :) . (: "_n}")) (['a'..'z'] :: String)
 
