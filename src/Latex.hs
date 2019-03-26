@@ -121,13 +121,14 @@ wrap l r d = atoms [Verbatim l, Child d, Verbatim r]
 use :: [Name] -> Doc
 use = mconcat . map (\ s -> fromString $ "\\usepackage{" ++ s ++ "}\n")
 
-mathPkgs = use ["amsmath", "amsthm", "amsfonts", "setspace"]
+mathPkgs = ["amsmath", "amsthm", "amsfonts", "setspace"]
+graphicsPkgs = ["amsmath", "amsthm", "amsfonts", "setspace", "graphicx"]
 
 -- Standard double-spaced document with class s
 document :: String -> Doc -> Doc
 document s d =
-  (fromString $ "\\documentclass{" ++ s ++ "}\n")
-  <> mathPkgs
+  fromString ("\\documentclass{" ++ s ++ "}\n")
+  <> use (mathPkgs ++ graphicsPkgs)
   <> "\\begin{document}\n"
   <> "\\doublespacing\n"
   <> d
@@ -420,6 +421,12 @@ figure label caption body =
   <> (fromString $ "\n\\caption{" ++ caption ++ "}\n")
   <> (fromString $ "\\label{" ++ label ++ "}\n")
   <> "\\end{figure}\n"
+
+pic :: Name -> ParaM a
+pic filename = fromString $ "\\includegraphics[width=\\linewidth]{" ++ filename ++ "}"
+
+chart :: Name -> Name -> Name -> ParaM a
+chart label filename caption = figure label caption (pic filename)
 
 -- Lists (enumerated with various bullet styles)
 -- Tables
